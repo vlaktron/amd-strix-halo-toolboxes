@@ -33,8 +33,8 @@ services:
       --model /models/qwen3-coder-next-q5-k-m/Q5_K_M/Qwen3-Coder-Next-Q5_K_M-00001-of-00003.gguf
       --ctx-size 131072 
       --parallel 1
-      --n-gpu-layers 48 
-      -fit off 
+      --n-gpu-layers 54
+      --vram 70
       --host 0.0.0.0
       --port 8080
       --no-mmap
@@ -81,14 +81,15 @@ services:
       --ctx-size 49152
       --host 0.0.0.0
       --port 8081
-      --n-gpu-layers 999
+      --n-gpu-layers 50
+      --vram 20
       --no-mmap
       -fa 1
       --threads 16
       --threads-batch 16
       -b 2048
       -ub 2048
-      --parallel 2
+      --parallel 1
       --swa-full
       --cache-prompt
       --cache-type-k q8_0
@@ -116,3 +117,4 @@ services:
       - HSA_OVERRIDE_GFX_VERSION=11.5.1
       - HSA_ENABLE_SDMA=0
       - HSA_USE_SVM=0
+      - COMFYUI_VRAM_LIMIT=5
