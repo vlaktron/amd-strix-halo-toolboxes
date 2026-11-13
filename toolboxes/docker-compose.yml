@@ -1,0 +1,118 @@
+services:
+  qwen3-coder:
+    image: localhost/llama-rocm-7.2.3-hardened:latest
+    pull_policy: never
+    container_name: llama-qwen3-coder
+    restart: unless-stopped
+    
+    # CRITICAL: Allocates host IPC and shared memory for ROCm driver buffers
+    ipc: host
+    shm_size: '16gb'
+
+    ports:
+      - "0.0.0.0:8080:8080"
+
+    devices:
+      - /dev/kfd:/dev/kfd
+      - /dev/dri:/dev/dri
+
+    group_add:
+      - video
+      - render
+
+    security_opt:
+      - label:disable
+
+    environment:
+      - HSA_OVERRIDE_GFX_VERSION=11.5.1 # Forces RDNA 3.5 architecture path
+
+    volumes:
+      - /mnt/models:/models:ro
+
+    command: >
+      --model /models/qwen3-coder-next-q5-k-m/Q5_K_M/Qwen3-Coder-Next-Q5_K_M-00001-of-00003.gguf
+      --ctx-size 131072 
+      --parallel 1
+      --n-gpu-layers 48 
+      -fit off 
+      --host 0.0.0.0
+      --port 8080
+      --no-mmap
+      -fa 1
+      --threads 16
+      --threads-batch 16
+      -b 2048
+      -ub 2048
+      --swa-full
+      --cache-prompt
+      --cache-type-k q8_0
+      --cache-type-v q8_0
+  gemma-4:
+    image: localhost/llama-rocm-7.2.3-hardened:latest
+    pull_policy: never
+    container_name: llama-gemma-4
+    restart: unless-stopped
+
+    ipc: host
+    shm_size: '16gb'
+
+    ports:
+      - "0.0.0.0:8081:8081"
+
+    devices:
+      - /dev/kfd:/dev/kfd
+      - /dev/dri:/dev/dri
+
+    group_add:
+      - video
+      - render
+
+    security_opt:
+      - label:disable
+
+    environment:
+      - HSA_OVERRIDE_GFX_VERSION=11.5.1
+
+    volumes:
+      - /mnt/models:/models:ro
+
+    command: >
+      --model /models/gemma-4-26B-A4B/gemma-4-26B-A4B-it-UD-Q4_K_M.gguf
+      --ctx-size 49152
+      --host 0.0.0.0
+      --port 8081
+      --n-gpu-layers 999
+      --no-mmap
+      -fa 1
+      --threads 16
+      --threads-batch 16
+      -b 2048
+      -ub 2048
+      --parallel 2
+      --swa-full
+      --cache-prompt
+      --cache-type-k q8_0
+      --cache-type-v q8_0
+  comfyui:
+    container_name: comfyui-flux
+    image: localhost/llama-rocm-7.2.3-comfy-ui:latest
+    ports:
+      - "0.0.0.0:8188:8188"
+    ipc: host
+    shm_size: '16gb'
+    volumes:
+      - /mnt/models/comfy-ui/clip:/home/comfy/ComfyUI/models/clip:Z
+      - /mnt/models/comfy-ui/vae:/home/comfy/ComfyUI/models/vae:Z
+      - /mnt/models/comfy-ui/unet:/home/comfy/ComfyUI/models/unet:Z
+      - /mnt/models/comfy-ui/output:/home/comfy/ComfyUI/output:Z,U
+      - /mnt/models/comfy-ui/user:/home/comfy/ComfyUI/user:Z,U
+    devices:
+      - /dev/kfd:/dev/kfd
+      - /dev/dri:/dev/dri
+    security_opt:
+      - label:disable
+    restart: unless-stopped
+    environment:
+      - HSA_OVERRIDE_GFX_VERSION=11.5.1
+      - HSA_ENABLE_SDMA=0
+      - HSA_USE_SVM=0

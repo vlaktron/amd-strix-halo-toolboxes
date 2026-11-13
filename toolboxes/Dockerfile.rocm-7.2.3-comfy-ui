@@ -1,0 +1,117 @@
+# ==============================================================================
+# Stage 1: Builder - ROCm 7.2.3 & Python Virtual Environment Build
+# ==============================================================================
+FROM registry.fedoraproject.org/fedora:43 AS builder
+
+# Add AMD ROCm 7.2.3 Repository
+RUN <<'EOF'
+tee /etc/yum.repos.d/rocm.repo <<REPO
+[ROCm-7.2.3]
+name=ROCm7.2.3
+baseurl=https://repo.radeon.com/rocm/rhel10/7.2.3/main
+enabled=1
+priority=50
+gpgcheck=1
+gpgkey=https://repo.radeon.com/rocm/rocm.gpg.key
+REPO
+EOF
+
+# Install build toolchain, Python 3.12, and ROCm libraries
+RUN dnf -y --nodocs --setopt=install_weak_deps=False \
+    --exclude='*sdk*' --exclude='*samples*' --exclude='*-doc*' --exclude='*-docs*' \
+    install \
+    make gcc gcc-c++ cmake lld clang clang-devel \
+    rocm-llvm rocm-device-libs hip-runtime-amd hip-devel \
+    rocblas rocblas-devel hipblas hipblas-devel rocm-cmake libomp-devel libomp \
+    rocminfo radeontop \
+    python3.12 python3.12-devel python3-pip \
+    git-core libcurl-devel patch \
+    && dnf clean all && rm -rf /var/cache/dnf/*
+
+ENV ROCM_PATH=/opt/rocm \
+    HIP_PATH=/opt/rocm \
+    HIP_CLANG_PATH=/opt/rocm/llvm/bin \
+    HIP_DEVICE_LIB_PATH=/opt/rocm/amdgcn/bitcode \
+    PATH=/opt/rocm/bin:/opt/rocm/llvm/bin:$PATH \
+    PYTORCH_ROCM_ARCH=gfx1151
+
+# Set up Python isolated virtual environment
+RUN python3.12 -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Upgrade core pip build tools
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel
+
+# Install PyTorch stack for ROCm 7.2
+RUN pip install --no-cache-dir torch torchvision torchaudio \
+    --index-url https://download.pytorch.org/whl/rocm7.2
+
+# Clone ComfyUI master
+WORKDIR /home/comfy/ComfyUI
+ARG REPO=https://github.com/comfyanonymous/ComfyUI.git
+ARG BRANCH=master
+RUN git clone -b ${BRANCH} --single-branch ${REPO} .
+
+# Install ComfyUI dependencies into virtualenv
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Install ComfyUI-GGUF
+RUN git clone https://github.com/city96/ComfyUI-GGUF.git custom_nodes/ComfyUI-GGUF && \
+  pip install --no-cache-dir gguf
+
+# Hardened Build Check: Verifies HIP support compiled into PyTorch
+RUN python3 -c "import torch; print(f'PyTorch HIP version: {torch.version.hip}'); assert torch.version.hip is not None, 'CRITICAL ERROR: PyTorch built without ROCm/HIP support!'"
+# ==============================================================================
+# Stage 2: Runtime - Minimal Hardened Fedora Layer
+# ==============================================================================
+FROM registry.fedoraproject.org/fedora-minimal:43
+
+# Add AMD ROCm 7.2.3 Repository
+RUN <<'EOF'
+tee /etc/yum.repos.d/rocm.repo <<REPO
+[ROCm-7.2.3]
+name=ROCm7.2.3
+baseurl=https://repo.radeon.com/rocm/rhel10/7.2.3/main
+enabled=1
+priority=50
+gpgcheck=1
+gpgkey=https://repo.radeon.com/rocm/rocm.gpg.key
+REPO
+EOF
+
+# Runtime dependencies (No sudo, lightweight minimal packages)
+RUN microdnf -y --nodocs --setopt=install_weak_deps=0 \
+    --exclude='*sdk*' --exclude='*samples*' --exclude='*-doc*' --exclude='*-docs*' \
+    install \
+    bash ca-certificates libatomic libstdc++ libgcc libgomp \
+    hip-runtime-amd rocblas hipblas \
+    rocminfo radeontop procps-ng shadow-utils \
+    python3.12 libglvnd-glx mesa-dri-drivers \
+    && microdnf clean all && rm -rf /var/cache/dnf/*
+
+# Security: Create non-root user matching Fedora GID/UID hardware access rules
+RUN groupadd -g 1000 comfy && \
+    useradd -u 1000 -g comfy -G video,render -m comfy
+
+# Copy Virtual Environment and ComfyUI codebase from builder
+COPY --from=builder /opt/venv /opt/venv
+COPY --from=builder /opt/ComfyUI /home/comfy/ComfyUI
+
+# Configure environment variables
+ENV PATH="/opt/venv/bin:/opt/rocm/bin:/opt/rocm/llvm/bin:$PATH" \
+    ROCM_PATH=/opt/rocm \
+    HIP_PATH=/opt/rocm \
+    HSA_OVERRIDE_GFX_VERSION=11.5.1 \
+    HSA_ENABLE_SDMA=0 \
+    HSA_USE_SVM=0 \
+    PYTHONUNBUFFERED=1
+
+# Ensure ownership for runtime outputs
+RUN chown -R comfy:comfy /home/comfy/ComfyUI
+
+# Drop root privileges
+USER comfy
+WORKDIR /home/comfy/ComfyUI
+EXPOSE 8188
+
+ENTRYPOINT ["python3", "main.py", "--listen", "0.0.0.0", "--port", "8188", "--highvram", "--disable-mmap", "--bf16-vae"]

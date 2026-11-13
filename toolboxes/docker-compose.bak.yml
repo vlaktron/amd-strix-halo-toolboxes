@@ -1,0 +1,87 @@
+services:
+  qwen3-coder:
+    image: localhost/llama-rocm-7.2.3-hardened:latest
+    pull_policy: never
+    container_name: llama-qwen3-coder
+    restart: unless-stopped
+
+    # Hardened Port Binding: Binds strictly to host loopback.
+    ports:
+      - "127.0.0.1:8080:8080"
+
+    # Direct hardware access for the Strix Halo RDNA 3.5 compute layer
+    devices:
+      - /dev/kfd:/dev/kfd
+      - /dev/dri:/dev/dri
+
+    # Map execution context to Fedora's hardware access groups
+    group_add:
+      - video
+      - render
+
+    # Disables SELinux label restrictions specifically for this container 
+    security_opt:
+      - label:disable
+
+    # Read-Only Volume Isolation
+    volumes:
+      - /mnt/models:/models:ro
+
+    # Strix Halo (gfx1151) Optimized Inference Architecture Flags
+    command: >
+      --model /models/qwen3-coder-next-q8/Q8_0/Qwen3-Coder-Next-Q8_0-00001-of-00003.gguf
+      --ctx-size 64000
+      --host 0.0.0.0
+      --port 8080
+      --n-gpu-layers 999
+      --no-mmap
+      -fa 1
+      --threads 8
+      --threads-batch 24
+      -b 2048
+      --parallel 1
+      --swa-full
+      --cache-prompt
+      --cache-type-k q8_0
+
+  gemma-4:
+    image: localhost/llama-rocm-7.2.3-hardened:latest
+    pull_policy: never
+    container_name: llama-gemma-4
+    restart: unless-stopped
+
+    # Shifted to Port 8081 to avoid conflict on loopback interface
+    ports:
+      - "127.0.0.1:8081:8081"
+
+    devices:
+      - /dev/kfd:/dev/kfd
+      - /dev/dri:/dev/dri
+
+    group_add:
+      - video
+      - render
+
+    security_opt:
+      - label:disable
+
+    volumes:
+      - /mnt/models:/models:ro
+
+    # Configuration for Gemma 4 26B (Adjust model path string if your sharding names differ)
+    command: >
+      --model /models/gemma-4-26B-A4B/gemma-4-26B-A4B-it-UD-Q4_K_M.gguf
+      --ctx-size 49152
+      --host 0.0.0.0
+      --port 8081
+      --n-gpu-layers 999
+      --no-mmap
+      -fa 1
+      --threads 8
+      --threads-batch 24
+      -b 2048
+      --parallel 1
+      --swa-full
+      --cache-prompt
+      --cache-type-k q8_0
+      --cache-type-v q8_0
