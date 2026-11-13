@@ -248,9 +248,11 @@ The docker-compose.yml enables a "home server" workflow:
 ---
 
 ## General Instructions for Coding Agents
-1.  **Container Builds**: When modifying `Dockerfile.*` files inside `/toolboxes`, ensure the build output remains lean and only necessary runtime dependencies and Llama.cpp binaries are carried over.
-2.  **Documentation Synchronization**: If adding a new backend or feature, ensure `README.md` is updated simultaneously.
-3.  **Scripts**: Benchmarking and utility scripts are expected to integrate with standard `toolbox` execution. Use `/dev/dri` and `/dev/kfd` mounts for device access.
+1.  **Branch Naming**: Use `feat/` prefix for feature branches (e.g., `feat/memory-tuning`)
+2.  **Conventional Commits**: Use conventional commit messages for all changes
+3.  **Container Builds**: When modifying `Dockerfile.*` files inside `/toolboxes`, ensure the build output remains lean and only necessary runtime dependencies and Llama.cpp binaries are carried over.
+4.  **Documentation Synchronization**: If adding a new backend or feature, ensure `README.md` is updated simultaneously.
+5.  **Scripts**: Benchmarking and utility scripts are expected to integrate with standard `toolbox` execution. Use `/dev/dri` and `/dev/kfd` mounts for device access.
 4.  **Security First**: For new hardened containers, always:
     - Use `fedora-minimal` as runtime base
     - Create dedicated non-root user (UID/GID 1000)
@@ -262,3 +264,34 @@ The docker-compose.yml enables a "home server" workflow:
     - Include `ipc: host` and `shm_size: '16gb'` for ROCm
     - Mount models read-only (`:ro`) where possible
     - Match `HSA_OVERRIDE_GFX_VERSION=11.5.1` for all services
+
+---
+
+## Conventional Commits
+
+This project follows conventional commit messages for clear changelog generation:
+
+```
+<type>[optional scope]: <description>
+
+[optional body]
+
+[optional footer]
+```
+
+### Types
+- `feat`: New feature for the user
+- `fix`: Bug fix for the user
+- `docs`: Documentation-only changes
+- `style`: Code style changes (formatting, etc.)
+- `refactor`: Code change that neither fixes a bug nor adds a feature
+- `perf`: Performance improvement
+- `test`: Adding or correcting tests
+- `chore`: Changes to the build process or auxiliary tools
+
+### Examples
+```
+feat: add memory tuning with VRAM caps
+fix: correct vram allocation for gemma-4 service
+docs: update AGENTS.md with branch naming conventions
+```
