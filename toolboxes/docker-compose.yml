@@ -7,7 +7,7 @@ services:
 
     # CRITICAL: Allocates host IPC and shared memory for ROCm driver buffers
     ipc: host
-    shm_size: "16gb"
+    shm_size: '16gb'
 
     ports:
       - "0.0.0.0:8080:8080"
@@ -56,7 +56,7 @@ services:
     restart: unless-stopped
 
     ipc: host
-    shm_size: "16gb"
+    shm_size: '16gb'
 
     ports:
       - "0.0.0.0:8081:8081"
@@ -102,7 +102,7 @@ services:
     ports:
       - "0.0.0.0:8188:8188"
     ipc: host
-    shm_size: "16gb"
+    shm_size: '16gb'
     volumes:
       - /mnt/models/comfy-ui/clip:/home/comfy/ComfyUI/models/clip:Z
       - /mnt/models/comfy-ui/vae:/home/comfy/ComfyUI/models/vae:Z
