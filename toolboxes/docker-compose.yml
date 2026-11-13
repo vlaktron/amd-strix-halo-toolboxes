@@ -4,10 +4,10 @@ services:
     pull_policy: never
     container_name: llama-qwen3-coder
     restart: unless-stopped
-    
+
     # CRITICAL: Allocates host IPC and shared memory for ROCm driver buffers
     ipc: host
-    shm_size: '16gb'
+    shm_size: "16gb"
 
     ports:
       - "0.0.0.0:8080:8080"
@@ -34,10 +34,10 @@ services:
       --ctx-size 131072 
       --parallel 1
       --n-gpu-layers 54
-      --vram 70
       --host 0.0.0.0
       --port 8080
       --no-mmap
+      --no-webui
       -fa 1
       --threads 16
       --threads-batch 16
@@ -54,7 +54,7 @@ services:
     restart: unless-stopped
 
     ipc: host
-    shm_size: '16gb'
+    shm_size: "16gb"
 
     ports:
       - "0.0.0.0:8081:8081"
@@ -82,14 +82,12 @@ services:
       --host 0.0.0.0
       --port 8081
       --n-gpu-layers 50
-      --vram 20
       --no-mmap
       -fa 1
       --threads 16
       --threads-batch 16
       -b 2048
       -ub 2048
-      --parallel 1
       --swa-full
       --cache-prompt
       --cache-type-k q8_0
@@ -100,7 +98,7 @@ services:
     ports:
       - "0.0.0.0:8188:8188"
     ipc: host
-    shm_size: '16gb'
+    shm_size: "16gb"
     volumes:
       - /mnt/models/comfy-ui/clip:/home/comfy/ComfyUI/models/clip:Z
       - /mnt/models/comfy-ui/vae:/home/comfy/ComfyUI/models/vae:Z
