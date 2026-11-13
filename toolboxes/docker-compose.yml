@@ -4,7 +4,7 @@ services:
     pull_policy: never
     container_name: llama-qwen3-coder
     restart: unless-stopped
-    
+
     # CRITICAL: Allocates host IPC and shared memory for ROCm driver buffers
     ipc: host
     shm_size: '16gb'
@@ -34,10 +34,10 @@ services:
       --ctx-size 131072 
       --parallel 1
       --n-gpu-layers 54
-      --vram 70
       --host 0.0.0.0
       --port 8080
       --no-mmap
+      --no-webui
       -fa 1
       --threads 16
       --threads-batch 16
@@ -47,6 +47,8 @@ services:
       --cache-prompt
       --cache-type-k q8_0
       --cache-type-v q8_0
+      --cache-ram 8192
+      --cache-reuse 256
   gemma-4:
     image: localhost/llama-rocm-7.2.3-hardened:latest
     pull_policy: never
@@ -82,18 +84,18 @@ services:
       --host 0.0.0.0
       --port 8081
       --n-gpu-layers 50
-      --vram 20
       --no-mmap
       -fa 1
       --threads 16
       --threads-batch 16
       -b 2048
       -ub 2048
-      --parallel 1
       --swa-full
       --cache-prompt
       --cache-type-k q8_0
       --cache-type-v q8_0
+      --cache-reuse 256
+      --n-parallel 2
   comfyui:
     container_name: comfyui-flux
     image: localhost/llama-rocm-7.2.3-comfy-ui:latest
