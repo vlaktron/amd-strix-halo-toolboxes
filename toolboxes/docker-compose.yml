@@ -95,10 +95,21 @@ services:
       --cache-type-k q8_0
       --cache-type-v q8_0
       --cache-reuse 256
-      --n-parallel 2
+      --parallel 2
   comfyui:
     container_name: comfyui-flux
     image: localhost/llama-rocm-7.2.3-comfy-ui:latest
+    entrypoint:
+      - python3
+      - main.py
+      - --listen
+      - "0.0.0.0"
+      - --port
+      - "8188"
+      - --disable-mmap
+      - --bf16-vae
+      - --disable-dynamic-vram
+      - --cache-none
     ports:
       - "0.0.0.0:8188:8188"
     ipc: host
@@ -119,4 +130,4 @@ services:
       - HSA_OVERRIDE_GFX_VERSION=11.5.1
       - HSA_ENABLE_SDMA=0
       - HSA_USE_SVM=0
-      - COMFYUI_VRAM_LIMIT=5
+      - HSA_TOOLS_DISABLE_REGISTER=1
